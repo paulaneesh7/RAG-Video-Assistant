@@ -1,0 +1,41 @@
+# --- UI ---
+streamlit>=1.40.0
+
+# --- Environment ---
+python-dotenv>=1.0.0
+
+# --- OpenAI (Whisper API, embeddings, LangChain OpenAI) ---
+openai>=1.60.0
+langchain-openai>=0.3.0
+
+# --- LangChain core ---
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langchain-text-splitters>=0.3.0
+
+# --- Mistral (free tier via LangChain) ---
+langchain-mistralai>=0.2.0
+
+# --- RAG / vector store ---
+chromadb>=0.5.0
+langchain-chroma>=0.2.0
+
+# --- HuggingFace embeddings ---
+langchain-huggingface>=0.1.0
+sentence-transformers>=3.0.0
+huggingface-hub>=0.27.0
+
+# --- Audio ingestion (YouTube + file uploads) ---
+yt-dlp>=2024.12.0
+pydub>=0.25.1
+audioop-lts>=0.2.1; python_version >= "3.13"
+
+# --- Export (PDF + TXT; TXT uses stdlib) ---
+fpdf2>=2.8.0
+reportlab>=4.2.0
+
+# --- Utilities ---
+httpx>=0.28.0
+tiktoken>=0.8.0
+tenacity>=9.0.0
