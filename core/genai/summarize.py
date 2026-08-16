@@ -82,7 +82,7 @@ def generate_title(transcript: str) -> str:
             ("system", """
                 Based on the meeting transcript, generate a short professional meeting title
                 (max 8 words). Only return the title, no other text.
-            """)
+            """),
             ("human", "{text}"),
         ])
         | llm
