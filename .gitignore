@@ -30,6 +30,7 @@ htmlcov/
 
 # --- AI / ML caches ---
 .cache/
+models/
 .huggingface/
 transformers_cache/
 torch_cache/
