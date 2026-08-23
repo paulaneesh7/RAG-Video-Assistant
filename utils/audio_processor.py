@@ -2,6 +2,8 @@ import os
 
 import yt_dlp
 
+from langfuse import observe
+
 from utils.ffmpeg_utils import configure_pydub, get_ffmpeg_dir
 
 FFMPEG_DIR = get_ffmpeg_dir()
@@ -83,6 +85,7 @@ def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list[str]:
 
 
 
+@observe(name="process_input")
 def process_input(source: str) -> list:
     if source.startswith("http://") or source.startswith("https://"):
         print("Detected Youtube URL. Downloading audio...")

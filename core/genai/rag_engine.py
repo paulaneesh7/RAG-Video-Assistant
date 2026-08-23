@@ -1,21 +1,15 @@
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langfuse import observe
 
 from core.genai.vector_store import build_vector_store, get_retriever, load_vector_store
 from core.observability.langfuse import (
     PROMPT_NAMES,
     chain_config,
     get_chat_prompt_from_pair,
+    get_llm_from_prompt,
 )
-
-
-def get_llm():
-    return ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.4,
-    )
 
 
 def format_docs(docs):
@@ -46,7 +40,7 @@ def _rag_prompt():
 
 
 def assemble_chain(retriever, system_prompt, prompt):
-    llm = get_llm()
+    llm = get_llm_from_prompt(system_prompt, fallback_temperature=0.4)
     rag_chain = (
         {
             "context": retriever | RunnableLambda(format_docs),
@@ -73,6 +67,7 @@ def load_rag_chain():
     return assemble_chain(retriever, system_prompt, prompt)
 
 
+@observe(name="rag_qa")
 def ask_question(rag_chain, question: str) -> str:
     print(f"Question : {question}")
     answer = rag_chain.invoke(
