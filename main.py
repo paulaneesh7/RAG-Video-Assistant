@@ -46,7 +46,8 @@ def run_pipeline(source: str, translate: bool = False) -> dict:
 
 
 if __name__ == "__main__":
-    source_file = "https://www.youtube.com/watch?v=JKDjT_8LWzE"
+    # source_file = "https://www.youtube.com/watch?v=JKDjT_8LWzE"
+    source_file = "https://www.youtube.com/watch?v=VgQiOYWr-1M"
 
     try:
         result = run_pipeline(source_file, translate=True)

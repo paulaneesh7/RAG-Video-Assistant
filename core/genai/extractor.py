@@ -1,23 +1,24 @@
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-from core.observability.langfuse import PROMPT_NAMES, chain_config, get_text_prompt
-
-
-def get_llm():
-    return ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+from core.observability.langfuse import (
+    PROMPT_NAMES,
+    chain_config,
+    get_llm_from_prompt,
+    get_text_prompt,
+)
 
 
 def build_chain(system_prompt_name: str, *, run_name: str):
     system_prompt = get_text_prompt(system_prompt_name)
+    llm = get_llm_from_prompt(system_prompt, fallback_temperature=0.2)
     template = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt.get_langchain_prompt()),
             ("human", "{text}"),
         ]
     )
-    chain = template | get_llm() | StrOutputParser()
+    chain = template | llm | StrOutputParser()
     return chain, system_prompt, run_name
 
 

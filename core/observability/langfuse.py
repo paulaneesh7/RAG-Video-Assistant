@@ -30,33 +30,34 @@ __all__ = [
     "flush_langfuse",
     "get_text_prompt",
     "get_chat_prompt_from_pair",
+    "get_llm_from_prompt",
     "chain_config",
 ]
 
 
-def _env(name: str) -> str | None:
+def env(name: str) -> str | None:
     value = os.getenv(name)
     if value is None:
         return None
     return value.strip().strip('"').strip("'")
 
 
-_client: Langfuse | None = None
+client: Langfuse | None = None
 
 
 def get_langfuse() -> Langfuse:
-    global _client
-    if _client is None:
-        _client = Langfuse(
-            public_key=_env("LANGFUSE_PUBLIC_KEY"),
-            secret_key=_env("LANGFUSE_SECRET_KEY"),
-            host=_env("LANGFUSE_HOST") or _env("LANGFUSE_BASE_URL"),
+    global client
+    if client is None:
+        client = Langfuse(
+            public_key=env("LANGFUSE_PUBLIC_KEY"),
+            secret_key=env("LANGFUSE_SECRET_KEY"),
+            host=env("LANGFUSE_HOST") or env("LANGFUSE_BASE_URL"),
         )
-    return _client
+    return client
 
 
 def get_langfuse_handler() -> CallbackHandler:
-    return CallbackHandler(public_key=_env("LANGFUSE_PUBLIC_KEY"))
+    return CallbackHandler(public_key=env("LANGFUSE_PUBLIC_KEY"))
 
 
 def flush_langfuse() -> None:
@@ -75,6 +76,27 @@ def get_chat_prompt_from_pair(system_name: str, user_name: str, *, label: str = 
     system_prompt = get_text_prompt(system_name, label=label)
     user_prompt = get_text_prompt(user_name, label=label)
     return system_prompt, user_prompt
+
+
+def get_llm_from_prompt(prompt, *, fallback_model: str = "gpt-4o-mini", fallback_temperature: float = 0.3):
+    """Build ChatOpenAI from Langfuse prompt.config (model, temperature, max_tokens, seed, top_p)."""
+    from langchain_openai import ChatOpenAI
+
+    config = getattr(prompt, "config", None) or {}
+    if not isinstance(config, dict):
+        config = {}
+
+    kwargs = {
+        "model": config.get("model", fallback_model),
+        "temperature": float(config.get("temperature", fallback_temperature)),
+    }
+    if config.get("max_tokens") is not None:
+        kwargs["max_tokens"] = int(config["max_tokens"])
+    if config.get("top_p") is not None:
+        kwargs["top_p"] = float(config["top_p"])
+    if config.get("seed") is not None:
+        kwargs["seed"] = int(config["seed"])
+    return ChatOpenAI(**kwargs)
 
 
 def chain_config(system_prompt, *, run_name: str, **metadata) -> dict:
