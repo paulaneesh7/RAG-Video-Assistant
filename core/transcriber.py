@@ -5,6 +5,8 @@ import httpx
 from dotenv import load_dotenv
 from sarvamai import SarvamAI
 
+from langfuse import observe
+
 from utils.ffmpeg_utils import configure_pydub, get_ffmpeg_dir
 
 load_dotenv()
@@ -33,6 +35,7 @@ def get_client() -> SarvamAI:
     return _client
 
 
+@observe(name="sarvam_stt")
 def send_to_sarvam(piece_path: str, mode: str) -> str:
     """Send one <=30s audio file to Sarvam and return transcript text."""
     client = get_client()
@@ -102,6 +105,7 @@ def transcribe_chunk(chunk_path: str, translate: bool = False) -> str:
     return full_text.strip()
 
 
+@observe(name="transcribe_all")
 def transcribe_all(chunks: list[str], translate: bool = False) -> str:
     """Transcribe all audio chunks with Sarvam and return the full transcript."""
     mode_label = "translate to English" if translate else "transcribe"

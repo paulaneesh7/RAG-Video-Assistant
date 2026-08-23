@@ -1,8 +1,8 @@
-import os
 from langchain_chroma import Chroma
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langfuse import observe
 
 
 
@@ -20,6 +20,7 @@ def get_embeddings():
 
 
 
+@observe(name="build_vector_store")
 def build_vector_store(transcript: str) -> Chroma:
     print("Building vector store...")
 

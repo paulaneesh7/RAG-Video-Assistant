@@ -113,6 +113,7 @@ langchain-huggingface==1.2.2
 langchain-mcp-adapters==0.3.0
 langchain-mistralai==1.1.2
 langchain-openai==1.4.1
+langfuse==4.14.4
 langchain-protocol==0.0.18
 langchain-text-splitters==1.1.2
 langdetect==1.0.9

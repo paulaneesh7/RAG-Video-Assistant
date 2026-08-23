@@ -1,107 +1,83 @@
-import os
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from core.genai.vector_store import build_vector_store, load_vector_store, get_retriever
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
+from core.genai.vector_store import build_vector_store, get_retriever, load_vector_store
+from core.observability.langfuse import (
+    PROMPT_NAMES,
+    chain_config,
+    get_chat_prompt_from_pair,
+)
 
 
 def get_llm():
-    model = ChatOpenAI(
+    return ChatOpenAI(
         model="gpt-4o-mini",
         temperature=0.4,
     )
-
-    return model
-
 
 
 def format_docs(docs):
     return "\n\n".join([doc.page_content for doc in docs])
 
 
+class TracedRagChain:
+    def __init__(self, chain, system_prompt):
+        self.chain = chain
+        self.langfuse_system_prompt = system_prompt
 
-def build_rag_chain(transcript: str):
-    vector_store = build_vector_store(transcript)
-
-    retriever = get_retriever(vector_store, k=5)
-
-
-    llm = get_llm()
-
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """
-            You are an expert meeting assistant. Answer the user's question 
-            based ONLY on the meeting transcript context provided below.
-
-            If the answer is not found in the context, say: 
-            "I could not find this information in the meeting transcript."
-
-            Always be concise and precise. If quoting someone, mention it clearly.
-
-            Context from meeting transcript:
-            {context}
-        """),
-        ("human", "{question}"),
-    ])
+    def invoke(self, question: str, config=None):
+        return self.chain.invoke(question, config=config)
 
 
-
-    rag_chain = (
-        {"context": retriever | RunnableLambda(format_docs), "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
+def _rag_prompt():
+    system_prompt, user_prompt = get_chat_prompt_from_pair(
+        PROMPT_NAMES["rag_system"],
+        PROMPT_NAMES["rag_user"],
     )
+    template = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt.get_langchain_prompt()),
+            ("human", user_prompt.get_langchain_prompt()),
+        ]
+    )
+    return system_prompt, template
 
 
-    return rag_chain
-
-
-
-def load_rag_chain():
-    vector_store = load_vector_store()
-    retriver = get_retriever()
-
+def assemble_chain(retriever, system_prompt, prompt):
     llm = get_llm()
-    prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """
-                You are an expert meeting assistant. Answer the user's question 
-                based ONLY on the meeting transcript context provided below.
-
-                If the answer is not found in the context, say: 
-                "I could not find this information in the meeting transcript."
-
-                Always be concise and precise. If quoting someone, mention it clearly.
-
-                Context from meeting transcript:
-                {context}""",
-        ),
-        ("human", "{question}"),
-    ])
-
     rag_chain = (
         {
-            "context":  retriver| RunnableLambda(format_docs),
+            "context": retriever | RunnableLambda(format_docs),
             "question": RunnablePassthrough(),
         }
         | prompt
         | llm
         | StrOutputParser()
     )
-
-    return rag_chain
-
+    return TracedRagChain(rag_chain, system_prompt)
 
 
+def build_rag_chain(transcript: str):
+    vector_store = build_vector_store(transcript)
+    retriever = get_retriever(vector_store, k=5)
+    system_prompt, prompt = _rag_prompt()
+    return assemble_chain(retriever, system_prompt, prompt)
 
-def ask_question(rag_chain, question:str) -> str:
+
+def load_rag_chain():
+    vector_store = load_vector_store()
+    retriever = get_retriever(vector_store)
+    system_prompt, prompt = _rag_prompt()
+    return assemble_chain(retriever, system_prompt, prompt)
+
+
+def ask_question(rag_chain, question: str) -> str:
     print(f"Question : {question}")
-    answer = rag_chain.invoke(question)
+    answer = rag_chain.invoke(
+        question,
+        config=chain_config(rag_chain.langfuse_system_prompt, run_name="rag_qa"),
+    )
     print(f"answer :{answer}")
     return answer

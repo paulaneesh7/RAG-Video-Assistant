@@ -1,79 +1,53 @@
-# ActionableItems, Decision, Questions Extractor
-
-
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-import os
 
-
+from core.observability.langfuse import PROMPT_NAMES, chain_config, get_text_prompt
 
 
 def get_llm():
     return ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
 
-
-
-# creating a custom function for chain
-def build_chain(system_prompt: str):
-    llm = get_llm()
-
-    chain = (
-        RunnablePassthrough()
-        | RunnableLambda(lambda x: {"text": x})
-        | ChatPromptTemplate.from_messages([("system", system_prompt), ("user", "{text}")])
-        | llm
-        | StrOutputParser()
+def build_chain(system_prompt_name: str, *, run_name: str):
+    system_prompt = get_text_prompt(system_prompt_name)
+    template = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt.get_langchain_prompt()),
+            ("human", "{text}"),
+        ]
     )
+    chain = template | get_llm() | StrOutputParser()
+    return chain, system_prompt, run_name
 
-    return chain
 
-
+def _invoke_extract(system_prompt_name: str, transcript: str, *, run_name: str) -> str:
+    chain, system_prompt, name = build_chain(system_prompt_name, run_name=run_name)
+    return chain.invoke(
+        {"text": transcript},
+        config=chain_config(system_prompt, run_name=name),
+    )
 
 
 def extract_action_items(transcript: str) -> str:
-    chain = build_chain(
-        """
-            You're an expert meeting analyst. From the meeting transcript,
-            extracy all action items. For each provide:
-            - Task description
-            - Owner (who is responsible)
-            - Deadline (if mentioned, else write 'Not specified')
-            Format as a numbered list. If none found say 'No action items found.
-        """
+    return _invoke_extract(
+        PROMPT_NAMES["action_items_system"],
+        transcript,
+        run_name="extract_action_items",
     )
-
-
-    return chain.invoke(transcript)
-
 
 
 def extract_key_decision(transcript: str) -> str:
-    chain = build_chain(
-        """
-        
-            You're an expert meeting analyst. From the meeting transcript,
-            extract all key decisions made. Format as a numbered list.
-            If none found say 'No key decisions found.
-        """
+    return _invoke_extract(
+        PROMPT_NAMES["key_decision_system"],
+        transcript,
+        run_name="extract_key_decisions",
     )
-
-    return chain.invoke(transcript)
-
-
 
 
 def extract_questions(transcript: str) -> str:
-
-    chain = build_chain(
-        """
-        
-            From the meeting transcript, extract all unresolved questions.
-            or topics needing follow-up. Format as a numbered list.
-            If none found say 'No open questions found.
-        """
+    return _invoke_extract(
+        PROMPT_NAMES["questions_system"],
+        transcript,
+        run_name="extract_questions",
     )
-
-    return chain.invoke(transcript)
